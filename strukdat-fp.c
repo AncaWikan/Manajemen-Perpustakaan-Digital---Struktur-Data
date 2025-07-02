@@ -4,11 +4,9 @@
 #include <stdbool.h>
 #define MAX_TITLE 100
 #define MAX_NAME 50
-#define MAX_PEMINJAMAN 100
 #define MAX_STACK 100
 #define HASH_SIZE 101
 
-/* ------------------- ADT Buku ------------------- */
 typedef struct Buku {
     int id;
     char judul[MAX_TITLE];
@@ -16,41 +14,37 @@ typedef struct Buku {
     int tahun;
     char kategori[50];
     bool tersedia;
-    struct Buku *next; // untuk linked list
+    struct Buku *next;
 } Buku;
 
-/* ------------------- ADT Pengguna ------------------- */
 typedef struct Pengguna {
     int id;
     char nama[MAX_NAME];
 } Pengguna;
 
-/* ------------------- ADT Peminjaman ------------------- */
 typedef struct Peminjaman {
     int idUser;
     int idBuku;
-    char aksi[10]; // "pinjam" atau "kembali"
+    char aksi[10];
 } Peminjaman;
 
-/* ------------------- Stack untuk Undo ------------------- */
+/* Stack */
 Peminjaman undoStack[MAX_STACK];
 int top = -1;
 
 void pushUndo(Peminjaman p) {
-    if (top < MAX_STACK - 1) {
+    if (top < MAX_STACK - 1)
         undoStack[++top] = p;
-    }
 }
 
 Peminjaman popUndo() {
-    if (top >= 0) {
+    if (top >= 0)
         return undoStack[top--];
-    }
     Peminjaman kosong = {-1, -1, ""};
     return kosong;
 }
 
-/* ------------------- Queue untuk antrean peminjam ------------------- */
+/* Queue */
 typedef struct QueueNode {
     int idUser;
     struct QueueNode *next;
@@ -66,32 +60,28 @@ void initQueue(Queue *q) {
 
 void enqueue(Queue *q, int idUser) {
     QueueNode *newNode = (QueueNode*)malloc(sizeof(QueueNode));
-    if (!newNode) {
-        printf("Gagal alokasi memori.\n");
-        return;
-    }
     newNode->idUser = idUser;
     newNode->next = NULL;
-    if (q->rear == NULL) {
+    if (!q->rear)
         q->front = q->rear = newNode;
-    } else {
+    else {
         q->rear->next = newNode;
         q->rear = newNode;
     }
 }
 
 int dequeue(Queue *q) {
-    if (q->front == NULL) return -1;
+    if (!q->front) return -1;
     QueueNode *temp = q->front;
     int id = temp->idUser;
     q->front = q->front->next;
-    if (q->front == NULL) q->rear = NULL;
+    if (!q->front) q->rear = NULL;
     free(temp);
     return id;
 }
 
 void clearQueue(Queue *q) {
-    while (q->front != NULL) {
+    while (q->front) {
         QueueNode *temp = q->front;
         q->front = q->front->next;
         free(temp);
@@ -99,7 +89,7 @@ void clearQueue(Queue *q) {
     q->rear = NULL;
 }
 
-/* ------------------- AVL Tree ------------------- */
+/* AVL Tree */
 typedef struct AVLNode {
     Buku data;
     struct AVLNode *left, *right;
@@ -108,13 +98,11 @@ typedef struct AVLNode {
 } AVLNode;
 
 int height(AVLNode *node) {
-    if (node == NULL) return 0;
-    return node->height;
+    return node ? node->height : 0;
 }
 
 int getBalance(AVLNode *node) {
-    if (node == NULL) return 0;
-    return height(node->left) - height(node->right);
+    return node ? height(node->left) - height(node->right) : 0;
 }
 
 int max(int a, int b) {
@@ -122,7 +110,7 @@ int max(int a, int b) {
 }
 
 AVLNode* newAVLNode(Buku data) {
-    AVLNode* node = (AVLNode*)malloc(sizeof(AVLNode));
+    AVLNode *node = (AVLNode*)malloc(sizeof(AVLNode));
     node->data = data;
     node->left = node->right = NULL;
     node->height = 1;
@@ -151,23 +139,18 @@ AVLNode* leftRotate(AVLNode *x) {
 }
 
 AVLNode* insertAVL(AVLNode* node, Buku data) {
-    if (node == NULL)
-        return newAVLNode(data);
-
+    if (!node) return newAVLNode(data);
     if (data.id < node->data.id)
         node->left = insertAVL(node->left, data);
     else if (data.id > node->data.id)
         node->right = insertAVL(node->right, data);
-    else
-        return node;
+    else return node;
 
     node->height = 1 + max(height(node->left), height(node->right));
     int balance = getBalance(node);
 
-    if (balance > 1 && data.id < node->left->data.id)
-        return rightRotate(node);
-    if (balance < -1 && data.id > node->right->data.id)
-        return leftRotate(node);
+    if (balance > 1 && data.id < node->left->data.id) return rightRotate(node);
+    if (balance < -1 && data.id > node->right->data.id) return leftRotate(node);
     if (balance > 1 && data.id > node->left->data.id) {
         node->left = leftRotate(node->left);
         return rightRotate(node);
@@ -181,16 +164,12 @@ AVLNode* insertAVL(AVLNode* node, Buku data) {
 }
 
 AVLNode* findBook(AVLNode *root, int id) {
-    if (root == NULL || root->data.id == id)
-        return root;
-    if (id < root->data.id)
-        return findBook(root->left, id);
-    else
-        return findBook(root->right, id);
+    if (!root || root->data.id == id) return root;
+    return (id < root->data.id) ? findBook(root->left, id) : findBook(root->right, id);
 }
 
 void inorderTraversal(AVLNode *root) {
-    if (root != NULL) {
+    if (root) {
         inorderTraversal(root->left);
         printf("ID: %d | Judul: %s | Penulis: %s | Tersedia: %s\n",
                root->data.id, root->data.judul, root->data.penulis,
@@ -200,7 +179,7 @@ void inorderTraversal(AVLNode *root) {
 }
 
 void freeAVL(AVLNode *root) {
-    if (root != NULL) {
+    if (root) {
         freeAVL(root->left);
         freeAVL(root->right);
         clearQueue(&root->antrean);
@@ -208,7 +187,7 @@ void freeAVL(AVLNode *root) {
     }
 }
 
-/* ------------------- Hash Table Pengguna ------------------- */
+/* Hash Table */
 typedef struct UserHashNode {
     Pengguna user;
     struct UserHashNode *next;
@@ -222,7 +201,7 @@ int hash(int key) {
 
 void insertUser(Pengguna user) {
     int index = hash(user.id);
-    UserHashNode* newNode = (UserHashNode*)malloc(sizeof(UserHashNode));
+    UserHashNode *newNode = (UserHashNode*)malloc(sizeof(UserHashNode));
     newNode->user = user;
     newNode->next = userTable[index];
     userTable[index] = newNode;
@@ -230,16 +209,15 @@ void insertUser(Pengguna user) {
 
 Pengguna* findUser(int id) {
     int index = hash(id);
-    UserHashNode* current = userTable[index];
-    while (current != NULL) {
-        if (current->user.id == id)
-            return &current->user;
+    UserHashNode *current = userTable[index];
+    while (current) {
+        if (current->user.id == id) return &current->user;
         current = current->next;
     }
     return NULL;
 }
 
-/* ------------------- Fungsi Input & Peminjaman ------------------- */
+/* Input Buku & Pengguna */
 void inputBuku(AVLNode **root) {
     Buku b;
     printf("\nMasukkan ID Buku: "); scanf("%d", &b.id); getchar();
@@ -258,6 +236,7 @@ void inputPengguna() {
     insertUser(u);
 }
 
+/* Peminjaman */
 void pinjamBuku(AVLNode *root) {
     int idUser, idBuku;
     printf("Masukkan ID Pengguna: "); scanf("%d", &idUser);
@@ -268,12 +247,11 @@ void pinjamBuku(AVLNode *root) {
     if (!b) { printf("Buku tidak ditemukan!\n"); return; }
     if (b->data.tersedia) {
         b->data.tersedia = false;
-        Peminjaman p = {idUser, idBuku, "pinjam"};
-        pushUndo(p);
+        pushUndo((Peminjaman){idUser, idBuku, "pinjam"});
         printf("Peminjaman berhasil.\n");
     } else {
-        printf("Buku sedang dipinjam. Ditambahkan ke antrean.\n");
         enqueue(&b->antrean, idUser);
+        printf("Buku sedang dipinjam. Ditambahkan ke antrean.\n");
     }
 }
 
@@ -285,20 +263,16 @@ void kembalikanBuku(AVLNode *root) {
     if (!b) { printf("Buku tidak ditemukan!\n"); return; }
     if (!b->data.tersedia) {
         b->data.tersedia = true;
-        Peminjaman p = {idUser, idBuku, "kembali"};
-        pushUndo(p);
-        if (b->antrean.front != NULL) {
+        pushUndo((Peminjaman){idUser, idBuku, "kembali"});
+        if (b->antrean.front) {
             int nextUser = dequeue(&b->antrean);
-            printf("Buku otomatis dipinjam oleh antrean user ID %d.\n", nextUser);
             b->data.tersedia = false;
-            Peminjaman autoPinjam = {nextUser, idBuku, "pinjam"};
-            pushUndo(autoPinjam);
+            pushUndo((Peminjaman){nextUser, idBuku, "pinjam"});
+            printf("Buku otomatis dipinjam oleh ID %d\n", nextUser);
         } else {
             printf("Pengembalian berhasil.\n");
         }
-    } else {
-        printf("Buku sudah tersedia. Tidak perlu dikembalikan.\n");
-    }
+    } else printf("Buku sudah tersedia.\n");
 }
 
 void undoTerakhir(AVLNode *root) {
@@ -318,56 +292,86 @@ void undoTerakhir(AVLNode *root) {
     }
 }
 
-/* ------------------- Main ------------------- */
+/* Sorting - Tambahan */
+int treeToArray(AVLNode *root, Buku arr[], int index) {
+    if (!root) return index;
+    index = treeToArray(root->left, arr, index);
+    arr[index++] = root->data;
+    index = treeToArray(root->right, arr, index);
+    return index;
+}
+
+void sortByJudul(Buku arr[], int n) {
+    for (int i = 0; i < n-1; ++i)
+        for (int j = 0; j < n-i-1; ++j)
+            if (strcmp(arr[j].judul, arr[j+1].judul) > 0) {
+                Buku temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+}
+
+void tampilkanBukuTerurut(AVLNode *root) {
+    Buku daftar[100];
+    int n = treeToArray(root, daftar, 0);
+    sortByJudul(daftar, n);
+    printf("\nDaftar Buku Terurut Berdasarkan Judul:\n");
+    for (int i = 0; i < n; ++i)
+        printf("ID: %d | Judul: %s | Penulis: %s | Tahun: %d | Tersedia: %s\n",
+               daftar[i].id, daftar[i].judul, daftar[i].penulis, daftar[i].tahun,
+               daftar[i].tersedia ? "Ya" : "Tidak");
+}
+
+/* Main */
 int main() {
     AVLNode *root = NULL;
     int pilihan;
     do {
         printf("\n===== Menu Perpustakaan =====\n");
-        printf("1. Tambah Buku\n2. Tambah Pengguna\n3. Lihat Daftar Buku\n4. Cari Pengguna\n5. Pinjam Buku\n6. Kembalikan Buku\n7. Undo Terakhir\n8. Tampilkan Antrean Buku\n0. Keluar\n");
+        printf("1. Tambah Buku\n2. Tambah Pengguna\n3. Lihat Daftar Buku\n4. Cari Pengguna\n5. Pinjam Buku\n6. Kembalikan Buku\n7. Undo Terakhir\n8. Tampilkan Antrean Buku\n9. Tampilkan Buku Terurut Berdasarkan Judul\n0. Keluar\n");
         printf("Pilihan: ");
         scanf("%d", &pilihan); getchar();
 
-        switch(pilihan) {
+        switch (pilihan) {
             case 1: inputBuku(&root); break;
             case 2: inputPengguna(); break;
             case 3: inorderTraversal(root); break;
             case 4: {
-                int cariID;
-                printf("Masukkan ID Pengguna: "); scanf("%d", &cariID);
-                Pengguna *u = findUser(cariID);
-                if (u) printf("Pengguna ditemukan: %s\n", u->nama);
-                else printf("Pengguna tidak ditemukan.\n");
+                int id;
+                printf("Masukkan ID Pengguna: "); scanf("%d", &id);
+                Pengguna *u = findUser(id);
+                if (u) printf("Pengguna: %s\n", u->nama);
+                else printf("Tidak ditemukan.\n");
                 break;
             }
             case 5: pinjamBuku(root); break;
             case 6: kembalikanBuku(root); break;
             case 7: undoTerakhir(root); break;
             case 8: {
-                int idBuku;
-                printf("Masukkan ID Buku: "); scanf("%d", &idBuku);
-                AVLNode *b = findBook(root, idBuku);
+                int id;
+                printf("Masukkan ID Buku: "); scanf("%d", &id);
+                AVLNode *b = findBook(root, id);
                 if (!b) printf("Buku tidak ditemukan.\n");
                 else {
-                    printf("Antrean peminjam untuk buku \"%s\":\n", b->data.judul);
-                    QueueNode *current = b->antrean.front;
-                    if (!current) printf("(Antrean kosong)\n");
-                    while (current != NULL) {
-                        Pengguna *u = findUser(current->idUser);
+                    printf("Antrean peminjam untuk \"%s\":\n", b->data.judul);
+                    QueueNode *cur = b->antrean.front;
+                    if (!cur) printf("(Kosong)\n");
+                    while (cur) {
+                        Pengguna *u = findUser(cur->idUser);
                         if (u) printf("- ID: %d | Nama: %s\n", u->id, u->nama);
-                        else printf("- ID: %d | (Pengguna tidak ditemukan)\n", current->idUser);
-                        current = current->next;
+                        else printf("- ID: %d | (Tidak ditemukan)\n", cur->idUser);
+                        cur = cur->next;
                     }
                 }
                 break;
             }
+            case 9: tampilkanBukuTerurut(root); break;
             case 0:
-                printf("Keluar dari program.\n");
+                printf("Keluar...\n");
                 freeAVL(root);
                 break;
             default: printf("Pilihan tidak valid.\n");
         }
     } while (pilihan != 0);
-
     return 0;
 }
