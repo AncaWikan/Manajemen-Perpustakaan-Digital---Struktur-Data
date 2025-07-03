@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #define MAX_TITLE 100
 #define MAX_NAME 50
 #define MAX_STACK 100
@@ -251,7 +252,8 @@ void pinjamBuku(AVLNode *root) {
         printf("Peminjaman berhasil.\n");
     } else {
         enqueue(&b->antrean, idUser);
-        printf("Buku sedang dipinjam. Ditambahkan ke antrean.\n");
+        printf("Buku sedang dipinjam. Ditambahkan ke antrean (Posisi: %d).\n", 
+               b->antrean.rear ? b->antrean.rear->idUser : idUser);
     }
 }
 
@@ -275,24 +277,54 @@ void kembalikanBuku(AVLNode *root) {
     } else printf("Buku sudah tersedia.\n");
 }
 
+/* Fungsi Undo yang Diperbaiki */
 void undoTerakhir(AVLNode *root) {
-    Peminjaman p = popUndo();
-    if (p.idUser == -1) {
+    if (top == -1) {
         printf("Tidak ada aksi untuk di-undo.\n");
         return;
     }
+
+    Peminjaman p = popUndo();
     AVLNode *b = findBook(root, p.idBuku);
-    if (!b) return;
+    if (!b) {
+        printf("Buku tidak ditemukan.\n");
+        return;
+    }
+
     if (strcmp(p.aksi, "pinjam") == 0) {
+        // Undo peminjaman - kembalikan buku
         b->data.tersedia = true;
-        printf("Undo: Buku ID %d dikembalikan.\n", p.idBuku);
-    } else if (strcmp(p.aksi, "kembali") == 0) {
+        printf("Undo: Buku ID %d dikembalikan oleh ID %d.\n", p.idBuku, p.idUser);
+        
+        // Jika ada antrian, beri opsi untuk meminjamkan ke antrian berikutnya
+        if (b->antrean.front) {
+            printf("Antrian tersedia:\n");
+            QueueNode *current = b->antrean.front;
+            while (current) {
+                Pengguna *u = findUser(current->idUser);
+                if (u) printf("- ID: %d | Nama: %s\n", u->id, u->nama);
+                current = current->next;
+            }
+            
+            printf("Apakah ingin meminjamkan ke antrian terdepan? (y/n): ");
+            char choice;
+            scanf(" %c", &choice);
+            if (choice == 'y' || choice == 'Y') {
+                int nextUser = dequeue(&b->antrean);
+                b->data.tersedia = false;
+                pushUndo((Peminjaman){nextUser, p.idBuku, "pinjam"});
+                printf("Buku dipinjamkan ke ID %d\n", nextUser);
+            }
+        }
+    } 
+    else if (strcmp(p.aksi, "kembali") == 0) {
+        // Undo pengembalian - pinjam kembali buku
         b->data.tersedia = false;
-        printf("Undo: Buku ID %d dipinjam ulang.\n", p.idBuku);
+        printf("Undo: Buku ID %d dipinjam kembali oleh ID %d.\n", p.idBuku, p.idUser);
     }
 }
 
-/* Sorting - Tambahan */
+/* Sorting */
 int treeToArray(AVLNode *root, Buku arr[], int index) {
     if (!root) return index;
     index = treeToArray(root->left, arr, index);
@@ -328,7 +360,10 @@ int main() {
     int pilihan;
     do {
         printf("\n===== Menu Perpustakaan =====\n");
-        printf("1. Tambah Buku\n2. Tambah Pengguna\n3. Lihat Daftar Buku\n4. Cari Pengguna\n5. Pinjam Buku\n6. Kembalikan Buku\n7. Undo Terakhir\n8. Tampilkan Antrean Buku\n9. Tampilkan Buku Terurut Berdasarkan Judul\n0. Keluar\n");
+        printf("1. Tambah Buku\n2. Tambah Pengguna\n3. Lihat Daftar Buku\n");
+        printf("4. Cari Pengguna\n5. Pinjam Buku\n6. Kembalikan Buku\n");
+        printf("7. Undo Terakhir\n8. Tampilkan Antrean Buku\n");
+        printf("9. Tampilkan Buku Terurut Berdasarkan Judul\n0. Keluar\n");
         printf("Pilihan: ");
         scanf("%d", &pilihan); getchar();
 
